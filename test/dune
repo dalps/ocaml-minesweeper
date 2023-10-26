@@ -1,2 +1,6 @@
-(test
- (name minesweeper))
+(library
+ (name minesweepertest)
+ (inline_tests)
+  (preprocess
+  (pps ppx_inline_test))
+ (libraries minesweeper))
