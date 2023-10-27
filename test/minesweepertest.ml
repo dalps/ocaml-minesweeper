@@ -47,7 +47,6 @@ let%test _ = bomb_nb w 0 5 = 0
 let%test _ = bomb_nb w 2 3 = 1
 let%test _ = bomb_nb w 3 2 = 1
 let%test _ = bomb_nb w 2 2 = 2
-
 let w = update (fun c -> New c) w
 
 let%test _ = unseal w 0 3 =   [
@@ -97,3 +96,31 @@ let%test _ = seal w 5 3 =   [
   [ New(Safe 0); New(Safe 1); New(Mined ); New(Safe 2); New(Safe 1) ];
   [ New(Safe 0); New(Safe 1); New(Safe 1); New(Safe 1); New(Safe 0) ];
 ]
+
+let%test _ = unseal (seal w 0 0) 0 0 = w
+
+(* unsealing a mined cell ends the game *)
+let%test _ =
+  Result.fold
+    ~ok:(fun (_, state) -> state = Over)
+    ~error:(fun _ -> false)
+    (unseal_input w 0 0)
+
+(* unsealing a flagged mined cell does not end the game *)
+let%test _ =
+  let w = seal w 0 0 in
+  Result.fold
+    ~ok:(fun (_, state) -> state = Continue)
+    ~error:(fun _ -> false)
+    (unseal_input w 0 0)
+
+let%test _ =
+  let w0 = w in
+  let w1 = unseal w0 0 4 in
+  let w2 = unseal w1 4 0 in
+  let w3 = unseal w2 4 4 in
+  let w4 = unseal w3 4 2 in
+  let w5 = unseal w4 2 4 in
+  let w6 = unseal w5 2 2 in
+  List.for_all (fun w -> win w = false) [w0;w1;w2;w3;w4;w5] &&
+  win w6 = true

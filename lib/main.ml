@@ -7,9 +7,9 @@ type field = cell_state list list
 type game_state = Over | Win | Continue
 
 let string_of_cell = function
-  | Mined -> "   "
-  | Safe 0 -> "   "
-  | Safe n -> " " ^ string_of_int n ^ " "
+  | New _ | Unsealed Mined | Unsealed (Safe 0) -> "   "
+  | Sealed _ -> " X "
+  | Unsealed (Safe n) -> " " ^ string_of_int n ^ " "
 
 let string_of_world w =
   List.fold_left
@@ -70,7 +70,8 @@ let unseal1 w i j =
   updateij
     (fun i' j' c ->
       match c with
-      | (New cell | Sealed cell) when i = i' && j = j' -> Unsealed cell
+      | New cell when i = i' && j = j' -> Unsealed cell
+      | Sealed cell when i = i' && j = j' -> New cell
       | _ -> c)
     w
 
@@ -81,27 +82,39 @@ let seal w i j =
     w
 
 let rec unseal w i j =
+  let w' = unseal1 w i j in
   match peek w i j with
-  | None | Some (Unsealed _) -> w
-  | Some (New cell | Sealed cell) -> (
-      let w' = unseal1 w i j in
-      let ns = neighbors_pos w i j in
+  | None | Some (Unsealed _ | Sealed _) -> w'
+  | Some (New cell) -> (
       match cell with
-      | Safe 0 -> List.fold_left (fun acc (i', j') -> unseal acc i' j') w' ns
+      | Safe 0 ->
+          let ns = neighbors_pos w i j in
+          List.fold_left (fun acc (i', j') -> unseal acc i' j') w' ns
       | _ -> w')
 
 let seal_input w i j =
   match peek w i j with
-  | None -> Error "wrong selection"
+  | None -> Error "invalid coordinates"
   | Some (New _) -> Ok (seal w i j, Continue)
-  | Some (Sealed _ | Unsealed _) -> Error "cannot seal again!"
+  | Some (Sealed _) -> Error "already sealed!"
+  | Some (Unsealed _) -> Error "cannot seal an unsealed cell!"
+
+(* check if there are any sealed safe cells *)
+let win w =
+  List.for_all
+    (List.for_all (function
+      | New (Safe _) | Sealed (Safe _) -> false
+      | _ -> true))
+    w
 
 let unseal_input w i j =
   match peek w i j with
-  | None -> Error "wrong selection"
-  | Some (New Mined | Sealed Mined) -> Ok (unseal w i j, Over)
-  | Some (New _ | Sealed _) -> Ok (unseal w i j, Continue)
-  | Some (Unsealed _) -> Error "cannot unseal again!"
+  | None -> Error "invalid coordinates"
+  | Some (New Mined) -> Ok (unseal w i j, Over)
+  | Some (New _ | Sealed _) ->
+      let w' = unseal w i j in
+      Ok (w', if win w' then Win else Continue)
+  | Some (Unsealed _) -> Error "already unsealed!"
 
 let rnd_world ~p ~height ~width =
   List.init height (fun _ ->
@@ -112,7 +125,7 @@ let step w =
     (fun i j -> function Mined -> Mined | Safe _ -> Safe (bomb_nb w i j))
     w
 
-let gen_world ?(p = 5) ?(height = 5) ?(width = 5) () =
+let gen_world ?(p = 10) ?(height = 5) ?(width = 5) () =
   let w = rnd_world ~p ~height ~width in
   step w
 
@@ -123,9 +136,9 @@ let gen_field () =
 let attrs_of_cell =
   let open T in
   function
-  | Mined -> [ red; on_red ]
-  | Safe 0 -> [ on_cyan ]
-  | Safe _ -> [ blue; on_cyan ]
+  | Unsealed Mined -> [ red; on_red ]
+  | Unsealed _ -> [ blue; on_cyan ]
+  | New _ | Sealed _ -> [ black; on_green ]
 
 let print_cell c = T.printf (attrs_of_cell c) "%s" (string_of_cell c)
 
@@ -137,7 +150,34 @@ let print_world w =
     w
 
 let display w =
-  let open T in
-  erase Screen;
-  set_cursor 1 1;
+  T.erase Screen;
+  T.set_cursor 1 1;
   print_world w
+
+let rec loop w =
+  let open T in
+  print_string [ T.Bold ] "Seal/Unseal:x,y > ";
+  let choice = read_line () in
+  let r =
+    try
+      let cmd = String.split_on_char '-' choice in
+      let coords = String.split_on_char ',' (List.nth cmd 1) in
+      let i = int_of_string (List.nth coords 0) in
+      let j = int_of_string (List.nth coords 1) in
+      match List.nth cmd 0 with
+      | "U" | "u" -> unseal_input w i j
+      | "S" | "s" -> seal_input w i j
+      | _ -> Error "invalid command"
+    with _ -> Error "syntax error"
+  in
+  Result.fold
+    ~ok:(fun (w', g) ->
+      display w';
+      match g with
+      | Continue -> loop w'
+      | Over -> print_string [ Bold; red ] "GAME OVER\n"
+      | Win -> print_string [ Bold; green ] "FIELD CLEARED!\n")
+    ~error:(fun s ->
+      print_string [] (s ^ "\n");
+      loop w)
+    r
