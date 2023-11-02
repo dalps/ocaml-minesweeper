@@ -7,13 +7,17 @@ let is_mined = function
   | Mined -> true
   | _ -> false
 
+let is_sealed = function
+  | Sealed _ -> true
+  | _ -> false
+
 let neighbors_pos w i j =
   let r0 = List.nth w 0 in
   let m = List.length w in
   let n = List.length r0 in
-  if i >= 0 && j >= 0 && i < m && j < n then
-    List.filter
-      (fun (i', j') -> i' >= 0 && j' >= 0 && i' < m && j' < n)
+  let is_valid (i', j') = i' >= 0 && j' >= 0 && i' < m && j' < n in
+  if is_valid (i, j) then
+    List.filter is_valid
       [
         (i - 1, j - 1);
         (i - 1, j);
@@ -29,9 +33,13 @@ let neighbors_pos w i j =
 let neighbors w i j =
   List.map (fun (i', j') -> peek w i' j') (neighbors_pos w i j)
 
-let mined_nb w i j =
-  let ns = neighbors w i j in
-  List.fold_left (fun acc n -> (if is_mined n then 1 else 0) + acc) 0 ns
+let fold_neighbors f b w i j = neighbors w i j |> List.fold_left f b
+
+let mined_nb =
+  fold_neighbors (fun acc n -> (if is_mined n then 1 else 0) + acc) 0
+
+let sealed_nb =
+  fold_neighbors (fun acc n -> (if is_sealed n then 1 else 0) + acc) 0
 
 let unseal1 w i j =
   update i j
@@ -44,13 +52,10 @@ let unseal1 w i j =
 let rec unseal w i j =
   let w' = unseal1 w i j in
   match peek w i j with
-  | Unsealed _ | Sealed _ -> w'
-  | New cell -> (
-      match cell with
-      | Safe 0 ->
-          let ns = neighbors_pos w i j in
-          List.fold_left (fun acc (i', j') -> unseal acc i' j') w' ns
-      | _ -> w')
+  | New (Safe 0) ->
+      let ns = neighbors_pos w i j in
+      List.fold_left (fun acc (i', j') -> unseal acc i' j') w' ns
+  | _ -> w'
 
 let seal w i j =
   update i j
@@ -75,10 +80,11 @@ let win w =
 
 let unseal_input w i j =
   match peek w i j with
-  | New Mined -> Ok (unseal w i j, Lose)
-  | New _ | Sealed _ ->
+  | New Mined -> Ok (unseal1 w i j, Lose)
+  | New _ ->
       let w' = unseal w i j in
       Ok (w', if win w' then Win else Continue)
+  | Sealed _ -> Ok (unseal1 w i j, Continue)
   | Unsealed _ -> Error "already unsealed!"
 
 let plant_mines ~p ~height ~width =
