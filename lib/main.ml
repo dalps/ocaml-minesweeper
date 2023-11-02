@@ -7,6 +7,10 @@ let is_mined = function
   | Mined -> true
   | _ -> false
 
+let is_mined' = function
+  | New Mined | Sealed Mined | Unsealed Mined -> true
+  | _ -> false
+
 let is_sealed = function
   | Sealed _ -> true
   | _ -> false
@@ -33,10 +37,18 @@ let neighbors_pos w i j =
 let neighbors w i j =
   List.map (fun (i', j') -> peek w i' j') (neighbors_pos w i j)
 
+let neighborsij w i j =
+  List.map (fun (i', j') -> (i', j', peek w i' j')) (neighbors_pos w i j)
+
 let fold_neighbors f b w i j = neighbors w i j |> List.fold_left f b
+
+let fold_neighborsij f b w i j = neighborsij w i j |> List.fold_left f b
 
 let mined_nb =
   fold_neighbors (fun acc n -> (if is_mined n then 1 else 0) + acc) 0
+
+let mined_nb' =
+  fold_neighbors (fun acc n -> (if is_mined' n then 1 else 0) + acc) 0
 
 let sealed_nb =
   fold_neighbors (fun acc n -> (if is_sealed n then 1 else 0) + acc) 0
@@ -45,7 +57,6 @@ let unseal1 w i j =
   update i j
     (function
       | New cell -> Unsealed cell
-      | Sealed cell -> New cell
       | _ as c -> c)
     w
 
@@ -56,6 +67,14 @@ let rec unseal w i j =
       let ns = neighbors_pos w i j in
       List.fold_left (fun acc (i', j') -> unseal acc i' j') w' ns
   | _ -> w'
+
+let unseal_nb w i j =
+  update i j
+    (function
+      | New cell -> Unsealed cell
+      | Sealed cell -> Sealed cell
+      | _ as c -> c)
+    w
 
 let seal w i j =
   update i j
@@ -84,8 +103,22 @@ let unseal_input w i j =
   | New _ ->
       let w' = unseal w i j in
       Ok (w', if win w' then Win else Continue)
-  | Sealed _ -> Ok (unseal1 w i j, Continue)
-  | Unsealed _ -> Error "already unsealed!"
+  | Sealed c -> Ok (update i j (fun _ -> New c) w, Continue)
+  | Unsealed _ when sealed_nb w i j = mined_nb' w i j ->
+      let w' =
+        fold_neighborsij (fun w' (i', j', _) -> unseal w' i' j') w w i j
+      in
+      let lose =
+        fold_neighbors
+          (fun acc n ->
+            (match n with
+            | Unsealed Mined -> true
+            | _ -> false)
+            || acc)
+          false w' i j
+      in
+      Ok (w', if lose then Lose else if win w' then Win else Continue)
+  | Unsealed _ -> Error "cannot unseal further!"
 
 let plant_mines ~p ~height ~width =
   List.init height (fun _ ->

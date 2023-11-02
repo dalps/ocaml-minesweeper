@@ -94,7 +94,10 @@ let%test _ = seal w 5 3 = [
   [ New(Safe 0); New(Safe 1); New(Safe 1); New(Safe 1); New(Safe 0) ];
 ]
 
-let%test _ = unseal (seal w 0 0) 0 0 = w
+let%test _ = 
+  let w' = seal_input w 0 0 |> Result.get_ok |> fst in 
+  let w' = unseal_input w' 0 0 |> Result.get_ok |> fst in 
+  w' = w
 
 (* unsealing a mined cell ends the game *)
 let%test _ =
@@ -121,3 +124,65 @@ let%test _ =
   let w6 = unseal w5 2 2 in
   List.for_all (fun w -> win w = false) [w0;w1;w2;w3;w4;w5] &&
   win w6 = true
+
+let%test _ = 
+  let w = unseal w 0 3 in
+  let w = seal w 0 0 in
+  unseal_input w 0 1 = Ok ([
+    [Sealed Mined; Unsealed (Safe 1); Unsealed (Safe 0); Unsealed (Safe 0); Unsealed (Safe 0)];
+    [Unsealed (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1)];
+    [New (Safe 0); New (Safe 1); New (Safe 2); New Mined; New (Safe 1)];
+    [New (Safe 0); New (Safe 1); New Mined; New (Safe 2); New (Safe 1)];
+    [New (Safe 0); New (Safe 1); New (Safe 1); New (Safe 1); New (Safe 0)]
+  ], Continue)
+
+let%test _ = 
+  let w = unseal w 0 3 in
+  let w = seal w 1 0 in
+  unseal_input w 0 1 = Ok ([
+    [Unsealed Mined; Unsealed (Safe 1); Unsealed (Safe 0); Unsealed (Safe 0); Unsealed (Safe 0)];
+    [Sealed (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1)];
+    [New (Safe 0); New (Safe 1); New (Safe 2); New Mined; New (Safe 1)];
+    [New (Safe 0); New (Safe 1); New Mined; New (Safe 2); New (Safe 1)];
+    [New (Safe 0); New (Safe 1); New (Safe 1); New (Safe 1); New (Safe 0)]
+  ], Lose)
+
+let%test _ = 
+  let w = unseal w 2 2 in
+  let w = seal w 2 3 in
+  let w = seal w 3 2 in
+  unseal_input w 2 2 = Ok ([
+    [New Mined; New (Safe 1); New (Safe 0); New (Safe 0); New (Safe 0)];
+    [New (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1); Unsealed (Safe 1); New (Safe 1)];
+    [New (Safe 0); Unsealed (Safe 1); Unsealed (Safe 2); Sealed Mined; New (Safe 1)];
+    [New (Safe 0); Unsealed (Safe 1); Sealed Mined; Unsealed (Safe 2); New (Safe 1)];
+    [New (Safe 0); New (Safe 1); New (Safe 1); New (Safe 1); New (Safe 0)]
+  ], Continue)
+
+let%test _ = 
+  let w = unseal w 2 2 in
+  let w = seal w 2 3 in
+  unseal w 2 2 = [
+    [New Mined; New (Safe 1); New (Safe 0); New (Safe 0); New (Safe 0)];
+    [New (Safe 1); New (Safe 1); New (Safe 1); New (Safe 1); New (Safe 1)];
+    [New (Safe 0); New (Safe 1); Unsealed (Safe 2); Sealed Mined; New (Safe 1)];
+    [New (Safe 0); New (Safe 1); New Mined; New (Safe 2); New (Safe 1)];
+    [New (Safe 0); New (Safe 1); New (Safe 1); New (Safe 1); New (Safe 0)]
+  ]
+
+let%test _ = 
+  let w = unseal w 2 2 in
+  let w = seal w 2 3 in
+  unseal_input w 2 2 |> Result.is_error
+
+let%test _ = 
+  let w = unseal w 0 3 in
+  let w = seal w 0 0 in
+  unseal_input w 1 1 = Ok ([
+    [ Sealed(Mined ); Unsealed(Safe 1); Unsealed(Safe 0); Unsealed(Safe 0); Unsealed(Safe 0) ];
+    [ Unsealed(Safe 1); Unsealed(Safe 1); Unsealed(Safe 1); Unsealed(Safe 1); Unsealed(Safe 1) ];
+    [ Unsealed(Safe 0); Unsealed(Safe 1); Unsealed(Safe 2); New(Mined ); New(Safe 1) ];
+    [ Unsealed(Safe 0); Unsealed(Safe 1); New(Mined ); New(Safe 2); New(Safe 1) ];
+    [ Unsealed(Safe 0); Unsealed(Safe 1); New(Safe 1); New(Safe 1); New(Safe 0) ];
+  ], Continue)
+
