@@ -42,7 +42,13 @@ let neighborsij w i j =
 
 let fold_neighbors f b w i j = neighbors w i j |> List.fold_left f b
 
-let fold_neighborsij f b w i j = neighborsij w i j |> List.fold_left f b
+let fold_neighborsij f b w i j =
+  let ns = neighbors_pos w i j in
+  let rec helper f accu = function
+    | [] -> accu
+    | (i', j') :: t -> helper f (f accu i' j') t
+  in
+  helper f b ns
 
 let mined_nb =
   fold_neighbors (fun acc n -> (if is_mined n then 1 else 0) + acc) 0
@@ -63,18 +69,8 @@ let unseal1 w i j =
 let rec unseal w i j =
   let w' = unseal1 w i j in
   match peek w i j with
-  | New (Safe 0) ->
-      let ns = neighbors_pos w i j in
-      List.fold_left (fun acc (i', j') -> unseal acc i' j') w' ns
+  | New (Safe 0) -> fold_neighborsij unseal w' w' i j
   | _ -> w'
-
-let unseal_nb w i j =
-  update i j
-    (function
-      | New cell -> Unsealed cell
-      | Sealed cell -> Sealed cell
-      | _ as c -> c)
-    w
 
 let seal w i j =
   update i j
@@ -89,35 +85,26 @@ let seal_input w i j =
   | Sealed _ -> Error "already sealed!"
   | Unsealed _ -> Error "cannot seal an unsealed cell!"
 
-(* check if there are any sealed safe cells *)
-let win w =
-  List.for_all
-    (List.for_all (function
-      | New (Safe _) | Sealed (Safe _) -> false
-      | _ -> true))
-    w
+(* the game is won is if there aren't any sealed safe cells left *)
+let game =
+  fold
+    (fun acc c ->
+      match (acc, c) with
+      | Lose, _ | _, Unsealed Mined -> Lose
+      | _, (New (Safe _) | Sealed (Safe _)) -> Continue
+      | _ -> acc)
+    Win
 
 let unseal_input w i j =
   match peek w i j with
   | New Mined -> Ok (unseal1 w i j, Lose)
   | New _ ->
       let w' = unseal w i j in
-      Ok (w', if win w' then Win else Continue)
+      Ok (w', game w')
   | Sealed c -> Ok (update i j (fun _ -> New c) w, Continue)
   | Unsealed _ when sealed_nb w i j = mined_nb' w i j ->
-      let w' =
-        fold_neighborsij (fun w' (i', j', _) -> unseal w' i' j') w w i j
-      in
-      let lose =
-        fold_neighbors
-          (fun acc n ->
-            (match n with
-            | Unsealed Mined -> true
-            | _ -> false)
-            || acc)
-          false w' i j
-      in
-      Ok (w', if lose then Lose else if win w' then Win else Continue)
+      let w' = fold_neighborsij unseal w w i j in
+      Ok (w', game w')
   | Unsealed _ -> Error "cannot unseal further!"
 
 let plant_mines ~p ~height ~width =

@@ -14,4 +14,6 @@ module ListMat = struct
   let mapij f = List.mapi (fun i -> List.mapi (fun j -> f i j))
 
   let update i j f = mapij (fun i' j' c -> if i = i' && j = j' then f c else c)
+
+  let fold f b = List.fold_left (List.fold_left f) b
 end

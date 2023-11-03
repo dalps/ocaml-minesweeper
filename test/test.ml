@@ -114,17 +114,6 @@ let%test _ =
     ~error:(fun _ -> false)
     (unseal_input w 0 0)
 
-let%test _ =
-  let w0 = w in
-  let w1 = unseal w0 0 4 in
-  let w2 = unseal w1 4 0 in
-  let w3 = unseal w2 4 4 in
-  let w4 = unseal w3 4 2 in
-  let w5 = unseal w4 2 4 in
-  let w6 = unseal w5 2 2 in
-  List.for_all (fun w -> win w = false) [w0;w1;w2;w3;w4;w5] &&
-  win w6 = true
-
 let%test _ = 
   let w = unseal w 0 3 in
   let w = seal w 0 0 in
@@ -186,3 +175,23 @@ let%test _ =
     [ Unsealed(Safe 0); Unsealed(Safe 1); New(Safe 1); New(Safe 1); New(Safe 0) ];
   ], Continue)
 
+let%test _ =
+  let w0 = w in
+  let w1 = unseal w0 0 4 in
+  let w2 = unseal w1 4 0 in
+  let w3 = unseal w2 4 4 in
+  let w4 = unseal w3 4 2 in
+  let w5 = unseal w4 2 4 in
+  let w6 = unseal w5 2 2 in
+  List.for_all (fun w -> game w = Continue) [w0;w1;w2;w3;w4;w5] &&
+  game w6 = Win 
+
+let%test _ =
+  let w0 = w in
+  let w1 = unseal w0 0 4 in
+  let w2 = unseal w1 4 0 in
+  let w3 = unseal w2 4 4 in
+  let w4 = unseal w3 4 2 in
+  let w5 = unseal w4 2 3 in
+  let w6 = unseal w5 2 2 in
+  game w6 = Lose 
