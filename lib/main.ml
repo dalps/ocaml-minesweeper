@@ -4,10 +4,6 @@ open Print
 module T = ANSITerminal
 
 let is_mined = function
-  | Mined -> true
-  | _ -> false
-
-let is_mined' = function
   | New Mined | Sealed Mined | Unsealed Mined -> true
   | _ -> false
 
@@ -15,56 +11,16 @@ let is_sealed = function
   | Sealed _ -> true
   | _ -> false
 
-let neighbors_pos w i j =
-  let r0 = List.nth w 0 in
-  let m = List.length w in
-  let n = List.length r0 in
-  let is_valid (i', j') = i' >= 0 && j' >= 0 && i' < m && j' < n in
-  if is_valid (i, j) then
-    List.filter is_valid
-      [
-        (i - 1, j - 1);
-        (i - 1, j);
-        (i - 1, j + 1);
-        (i, j - 1);
-        (i, j + 1);
-        (i + 1, j - 1);
-        (i + 1, j);
-        (i + 1, j + 1);
-      ]
-  else []
-
-let neighbors w i j =
-  List.map (fun (i', j') -> peek w i' j') (neighbors_pos w i j)
-
-let neighborsij w i j =
-  List.map (fun (i', j') -> (i', j', peek w i' j')) (neighbors_pos w i j)
-
-let fold_neighbors f b w i j = neighbors w i j |> List.fold_left f b
-
-let fold_neighborsij f b w i j =
-  let ns = neighbors_pos w i j in
-  let rec helper f accu = function
-    | [] -> accu
-    | (i', j') :: t -> helper f (f accu i' j') t
-  in
-  helper f b ns
-
 let mined_nb =
   fold_neighbors (fun acc n -> (if is_mined n then 1 else 0) + acc) 0
-
-let mined_nb' =
-  fold_neighbors (fun acc n -> (if is_mined' n then 1 else 0) + acc) 0
 
 let sealed_nb =
   fold_neighbors (fun acc n -> (if is_sealed n then 1 else 0) + acc) 0
 
-let unseal1 w i j =
-  update i j
-    (function
-      | New cell -> Unsealed cell
-      | _ as c -> c)
-    w
+let unseal1 =
+  update (function
+    | New cell -> Unsealed cell
+    | _ as c -> c)
 
 let rec unseal w i j =
   let w' = unseal1 w i j in
@@ -72,12 +28,10 @@ let rec unseal w i j =
   | New (Safe 0) -> fold_neighborsij unseal w' w' i j
   | _ -> w'
 
-let seal w i j =
-  update i j
-    (function
-      | New cell -> Sealed cell
-      | _ as c -> c)
-    w
+let seal =
+  update (function
+    | New cell -> Sealed cell
+    | _ as c -> c)
 
 let seal_input w i j =
   match peek w i j with
@@ -101,22 +55,23 @@ let unseal_input w i j =
   | New _ ->
       let w' = unseal w i j in
       Ok (w', game w')
-  | Sealed c -> Ok (update i j (fun _ -> New c) w, Continue)
-  | Unsealed _ when sealed_nb w i j = mined_nb' w i j ->
+  | Sealed c -> Ok (update (fun _ -> New c) w i j, Continue)
+  | Unsealed _ when sealed_nb w i j = mined_nb w i j ->
       let w' = fold_neighborsij unseal w w i j in
       Ok (w', game w')
   | Unsealed _ -> Error "cannot unseal further!"
 
 let plant_mines ~p ~height ~width =
   List.init height (fun _ ->
-      List.init width (fun _ -> if Random.int 100 < p then Mined else Safe 0))
+      List.init width (fun _ ->
+          if Random.int 100 < p then New Mined else New (Safe 0)))
 
 let gen_field ?(p = 10) ?(height = 10) ?(width = 10) () =
   let w = plant_mines ~p ~height ~width in
   mapij
     (fun i j -> function
-      | Mined -> New Mined
-      | Safe _ -> New (Safe (mined_nb w i j)))
+      | New (Safe _) -> New (Safe (mined_nb w i j))
+      | _ as c -> c)
     w
 
 let rec loop w =
@@ -144,3 +99,5 @@ let rec loop w =
       print_error s;
       loop w)
     r
+
+(* #TODO: difficulties, move neighbor functions to ListMat, keep only one mined_nb *)

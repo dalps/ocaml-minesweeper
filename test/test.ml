@@ -12,12 +12,12 @@ let w =
   ]
 
 let%test _ =
-  neighbors_pos w 2 2 =
+  neighborsij w 2 2 =
     [ (1, 1); (1, 2); (1, 3); (2, 1); (2, 3); (3, 1); (3, 2); (3, 3) ]
 
-let%test _ = neighbors_pos w 0 0 = [ (0, 1); (1, 0); (1, 1) ]
-let%test _ = neighbors_pos w (-1) 0 = []
-let%test _ = neighbors_pos w 5 5 = []
+let%test _ = neighborsij w 0 0 = [ (0, 1); (1, 0); (1, 1) ]
+let%test _ = neighborsij w (-1) 0 = []
+let%test _ = neighborsij w 5 5 = []
 
 let%test _ =
   neighbors w 2 2 = [
@@ -38,13 +38,14 @@ let%test _ =
       Safe 1; Safe 1
     ]
 
+    
+let w = map (fun c -> New c) w
+
 let%test _ = mined_nb w 0 0 = 0 (* excludes mine at i,j *)
 let%test _ = mined_nb w 2 2 = 2
 let%test _ = mined_nb w 0 5 = 0
 let%test _ = mined_nb w 2 3 = 1
 let%test _ = mined_nb w 3 2 = 1
-
-let w = map (fun c -> New c) w
 
 let%test _ = unseal w 0 3 = [
   [ New(Mined ); Unsealed(Safe 1); Unsealed(Safe 0); Unsealed(Safe 0); Unsealed(Safe 0) ];
