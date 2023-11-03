@@ -10,6 +10,9 @@ module ListMat = struct
 
   let valid_coords m n i j = i >= 0 && j >= 0 && i < m && j < n
 
+  let init ~width ~height f =
+    List.init height (fun i -> List.init width (fun j -> f i j))
+
   let peek w i j =
     try List.nth (List.nth w i) j with _ -> raise Invalid_coordinates
 

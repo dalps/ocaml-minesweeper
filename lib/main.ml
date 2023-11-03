@@ -66,25 +66,30 @@ let unseal_input w i j =
       Ok (w', game w')
   | Unsealed _ -> Error "cannot unseal further!"
 
-let plant_mines ~p ~height ~width =
-  List.init height (fun _ ->
-      List.init width (fun _ ->
-          if Random.int 100 < p then New Mined else New (Safe 0)))
+let plant_mines ~p ~height ~width i j =
+  init ~height ~width (fun i' j' ->
+      if Random.int 100 < p && i' <> i && j' <> j then New Mined
+      else New (Safe 0))
 
-let gen_field ?(p = 10) ?(height = 10) ?(width = 10) () =
-  let w = plant_mines ~p ~height ~width in
+let gen_field ?(p = 20) ?(height = 3) ?(width = 3) i j =
+  let w = plant_mines ~p ~height ~width i j in
   mapij
     (fun i j -> function
       | New (Safe _) -> New (Safe (mined_nb w i j))
       | _ as c -> c)
     w
 
-let rec loop w =
+let blank_field height width =
+  init ~height ~width (fun _ _ -> New (Safe 0))
+
+let prompt () =
   print_prompt ();
+  read_line () |> parse
+
+let rec loop w =
   let r =
     try
-      let cmd = read_line () |> parse in
-      match cmd with
+      match prompt () with
       | U (i, j) -> unseal_input w i j
       | S (i, j) -> seal_input w i j
     with
@@ -102,4 +107,4 @@ let rec loop w =
       loop w)
     r
 
-(* #TODO: difficulties, move neighbor functions to ListMat, keep only one mined_nb *)
+(* #TODO: difficulties, safe spawn *)
