@@ -3,6 +3,11 @@ open ListMat
 open Print
 module T = ANSITerminal
 
+let parse s =
+  let lexbuf = Lexing.from_string s in
+  let cmd = Parser.command Lexer.read_token lexbuf in
+  cmd
+
 let is_mined = function
   | New Mined | Sealed Mined | Unsealed Mined -> true
   | _ -> false
@@ -76,15 +81,12 @@ let gen_field ?(p = 10) ?(height = 10) ?(width = 10) () =
 
 let rec loop w =
   print_prompt ();
-  let choice = read_line () in
   let r =
     try
-      let i = String.make 1 choice.[1] |> int_of_string in
-      let j = String.make 1 choice.[3] |> int_of_string in
-      match choice.[0] with
-      | 'U' | 'u' -> unseal_input w i j
-      | 'S' | 's' -> seal_input w i j
-      | _ -> Error "invalid command"
+      let cmd = read_line () |> parse in
+      match cmd with
+      | U (i, j) -> unseal_input w i j
+      | S (i, j) -> seal_input w i j
     with
     | Invalid_coordinates -> Error "invalid coordinates"
     | _ -> Error "syntax error"

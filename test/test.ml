@@ -196,3 +196,8 @@ let%test _ =
   let w5 = unseal w4 2 3 in
   let w6 = unseal w5 2 2 in
   game w6 = Lose 
+
+let%test _ = "U1,0" |> parse = U (1,0)
+let%test _ = "-1.0" |> parse = U (1,0)
+let%test _ = "+42,9" |> parse = S (42,9)
+let%test _ = try "+429" |> parse = S (42,9) with _ -> true

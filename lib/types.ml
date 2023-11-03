@@ -3,6 +3,8 @@ type cell = New of cell' | Unsealed of cell' | Sealed of cell'
 
 type game_state = Lose | Win | Continue
 
+type command = U of int * int | S of int * int
+
 module ListMat = struct
   exception Invalid_coordinates
 
