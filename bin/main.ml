@@ -7,8 +7,8 @@ let () =
   Random.self_init ();
   let m = 10 in
   let n = 10 in
-  let p = 20 in
-  let w0 = blank_field m n in
+  let p = 100 in
+  let w0 = blank_field ~height:m ~width:n in
   let rec preamble w =
     let r =
       try

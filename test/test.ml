@@ -201,3 +201,20 @@ let%test _ = "U1,0" |> parse = U (1,0)
 let%test _ = "-1.0" |> parse = U (1,0)
 let%test _ = "+42,9" |> parse = S (42,9)
 let%test _ = try "+429" |> parse = S (42,9) with _ -> true
+
+let%test _ =
+  let w0 = gen_field ~p:100 ~height:5 ~width:5 2 2 in
+  let w1 = unseal w0 2 2 in
+  let ws = [
+    unseal w0 2 1;
+    unseal w0 2 3;
+    unseal w0 1 1;
+    unseal w0 1 2;
+    unseal w0 1 3;
+    unseal w0 3 1;
+    unseal w0 3 2;
+    unseal w0 3 3;
+  ] 
+  in
+  List.for_all (fun w -> game w = Continue) ws &&
+  game w1 = Win
