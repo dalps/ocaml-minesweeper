@@ -5,7 +5,8 @@ open Minesweeper.Print
 open Minesweeper.Types
 open ListMat
 
-let usage_msg = "dune exec minesweeper [-w <width>] [-h <height>] [-m <nbr_mines>]"
+let usage_msg =
+  "dune exec minesweeper [-w <width>] [-h <height>] [-m <nbr_mines>]"
 
 let width = ref 10
 let height = ref 10
@@ -23,13 +24,16 @@ let speclist =
 let () =
   Arg.parse speclist anon_fun usage_msg;
   Random.self_init ();
-  let w0 = blank_field ~width:!width ~height:!height in
+  let w0 = empty_field ~width:!width ~height:!height in
   let rec preamble w =
     let r =
       try
         match prompt () with
         | U (i, j) | S (i, j) ->
-            let w = gen_field ~p:!mines ~width:!width ~height:!height i j in
+            let w =
+              gen_field ~nbr_mines:!mines ~width:!width ~height:!height
+                ~init_i:i ~init_j:j
+            in
             unseal_input w i j
       with
       | Invalid_coordinates -> Error "invalid coordinates"

@@ -62,27 +62,32 @@ let unseal_input w i j =
       Ok (w', game w')
   | Sealed c -> Ok (update (fun _ -> New c) w i j, Continue)
   | Unsealed _ when sealed_nb w i j = mined_nb w i j ->
-      let w' = fold_neighborsij  unseal w w i j in
+      let w' = fold_neighborsij unseal w w i j in
       Ok (w', game w')
   | Unsealed _ -> Error "cannot unseal further!"
 
-let blank_field ~height ~width = init ~height ~width (fun _ _ -> New (Safe 0))
+let empty_field ~width ~height = init ~width ~height (fun _ _ -> New (Safe 0))
 
-let plant_mines ~p w i j =
-  let nij = neighborsij w i j in
-  mapij
-    (fun i' j' _ ->
-      if
-        Random.int 100 < p
-        && (i', j') <> (i, j)
-        && List.for_all (( <> ) (i', j')) nij
-      then New Mined
-      else New (Safe 0))
-    w
-
-let gen_field ?(p = 20) ?(height = 3) ?(width = 3) i j =
-  let w = blank_field ~height ~width in
-  let w = plant_mines ~p w i j in
+(* Generate a random field and populate it with hints *)
+let gen_field ~width ~height ~nbr_mines ~init_i ~init_j =
+  let take n l = List.to_seq l |> Seq.take n |> List.of_seq in
+  let w = empty_field ~width ~height in
+  let init_ns = neighborsij w init_i init_j in
+  let candidates =
+    enum_coords w
+    |> List.filter (fun (i', j') ->
+           (i', j') <> (init_i, init_j)
+           && List.for_all (( <> ) (i', j')) init_ns)
+    |> List.sort (fun _ _ -> List.nth [-1; 1] (Random.int 2))
+    |> take nbr_mines
+  in
+  (* don't reverse apply *)
+  let w =
+    mapij
+      (fun i j _ ->
+        if List.mem (i, j) candidates then New Mined else New (Safe 0))
+      w
+  in
   mapij
     (fun i j -> function
       | New (Safe _) -> New (Safe (mined_nb w i j))
@@ -114,4 +119,4 @@ let rec loop w =
       loop w)
     r
 
-(* #TODO: difficulties, arguments, safe spawn, print all other mines as magenta when lose *)
+(* #TODO: plant a certain number of mines; mine counter *)

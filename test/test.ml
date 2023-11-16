@@ -203,7 +203,7 @@ let%test _ = "+42,9" |> parse = S (42,9)
 let%test _ = try "+429" |> parse = S (42,9) with _ -> true
 
 let%test _ =
-  let w0 = gen_field ~p:100 ~height:5 ~width:5 2 2 in
+  let w0 = gen_field ~nbr_mines:25 ~height:5 ~width:5 ~init_i:2 ~init_j:2 in
   let w1 = unseal w0 2 2 in
   let ws = [
     unseal w0 2 1;
@@ -218,3 +218,20 @@ let%test _ =
   in
   List.for_all (fun w -> game w = Continue) ws &&
   game w1 = Win
+
+let count_mines = fold (fun acc c -> (if is_mined c then 1 else 0) + acc) 0
+let%test _ =
+  let w = gen_field ~nbr_mines:25 ~height:5 ~width:5 ~init_i:2 ~init_j:2
+  in count_mines w = 16
+
+let%test _ =
+  let w = gen_field ~nbr_mines:5 ~height:5 ~width:5 ~init_i:2 ~init_j:2
+  in count_mines w = 5
+
+let%test _ =
+  let w = gen_field ~nbr_mines:100 ~height:5 ~width:5 ~init_i:2 ~init_j:2
+  in count_mines w = 16
+
+let%test _ =
+  let w = gen_field ~nbr_mines:25 ~height:5 ~width:5 ~init_i:0 ~init_j:0
+  in count_mines w = 21

@@ -6,6 +6,7 @@ type game_state = Lose | Win | Continue
 type command = U of int * int | S of int * int
 
 module ListMat = struct
+  type 'a t = 'a list list
   exception Invalid_coordinates
 
   let valid_coords m n i j = i >= 0 && j >= 0 && i < m && j < n
@@ -24,6 +25,20 @@ module ListMat = struct
     mapij (fun i' j' c -> if i = i' && j = j' then f c else c) w
 
   let fold f b = List.fold_left (List.fold_left f) b
+
+  let foldij f b w =
+    let rec helperi i accu w =
+      let rec helperj j accu' = function
+        | [] -> accu'
+        | c :: cs -> helperj (j + 1) (f accu' i j c) cs
+      in
+      match w with
+      | [] -> accu
+      | r :: t -> helperi (i + 1) (helperj 0 accu r) t
+    in
+    helperi 0 b w
+
+  let enum_coords (w : 'a t) = foldij (fun acc i j _ -> (i, j) :: acc) [] w
 
   let neighborsij w i j =
     let m = List.length w in
