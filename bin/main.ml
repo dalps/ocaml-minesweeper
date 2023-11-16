@@ -1,20 +1,35 @@
+(* Run with: dune exec -- minesweeper [options] *)
+
 open Minesweeper.Main
 open Minesweeper.Print
 open Minesweeper.Types
 open ListMat
 
+let usage_msg = "dune exec minesweeper [-w <width>] [-h <height>] [-m <nbr_mines>]"
+
+let width = ref 10
+let height = ref 10
+let mines = ref 20
+
+let anon_fun = print_endline
+
+let speclist =
+  [
+    ("-w", Arg.Set_int width, "Width of the play field");
+    ("-h", Arg.Set_int height, "Height of the play field");
+    ("-m", Arg.Set_int mines, "Number of mines to hide in the play field");
+  ]
+
 let () =
+  Arg.parse speclist anon_fun usage_msg;
   Random.self_init ();
-  let m = 10 in
-  let n = 10 in
-  let p = 100 in
-  let w0 = blank_field ~height:m ~width:n in
+  let w0 = blank_field ~width:!width ~height:!height in
   let rec preamble w =
     let r =
       try
         match prompt () with
         | U (i, j) | S (i, j) ->
-            let w = gen_field ~p ~height:m ~width:n i j in
+            let w = gen_field ~p:!mines ~width:!width ~height:!height i j in
             unseal_input w i j
       with
       | Invalid_coordinates -> Error "invalid coordinates"
