@@ -49,4 +49,4 @@ let () =
       loop w1
   | w1, g ->
       display w1;
-      print_game_result g
+      print_game_result w1 g

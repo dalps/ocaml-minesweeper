@@ -62,7 +62,7 @@ let unseal_input w i j =
       Ok (w', game w')
   | Sealed c -> Ok (update (fun _ -> New c) w i j, Continue)
   | Unsealed _ when sealed_nb w i j = mined_nb w i j ->
-      let w' = fold_neighborsij unseal w w i j in
+      let w' = fold_neighborsij  unseal w w i j in
       Ok (w', game w')
   | Unsealed _ -> Error "cannot unseal further!"
 
@@ -108,10 +108,10 @@ let rec loop w =
       display w';
       match g with
       | Continue -> loop w'
-      | _ -> print_game_result g)
+      | _ -> print_game_result w' g)
     ~error:(fun s ->
       print_error s;
       loop w)
     r
 
-(* #TODO: difficulties, arguments, safe spawn, show all other mines as magenta when lose *)
+(* #TODO: difficulties, arguments, safe spawn, print all other mines as magenta when lose *)
