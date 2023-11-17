@@ -87,7 +87,20 @@ let print_error s =
   let open T in
   print_string [ yellow ] (s ^ "\n")
 
+let mines = ref 0
+let set_mines m = mines := m
+
 let display w =
   T.erase Screen;
   T.set_cursor 1 1;
+  let sealed_mines =
+    ListMat.fold
+      (fun acc c ->
+        (match c with
+        | Sealed _ -> 1
+        | _ -> 0)
+        + acc)
+      0 w
+  in
+  T.printf [ T.Bold; T.yellow ] "Mines: %i\n" (!mines - sealed_mines);
   print_field w

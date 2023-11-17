@@ -12,19 +12,20 @@ let width = ref 10
 let height = ref 10
 let mines = ref 20
 
-let anon_fun = print_endline
+let anon_fun a = raise (Arg.Bad ("Invalid argument " ^ a))
 
 let speclist =
   [
-    ("-w", Arg.Set_int width, "Width of the play field");
-    ("-h", Arg.Set_int height, "Height of the play field");
-    ("-m", Arg.Set_int mines, "Number of mines to hide in the play field");
+    ("-w", Arg.Set_int width, " Width of the play field (10)");
+    ("-h", Arg.Set_int height, " Height of the play field (10)");
+    ("-m", Arg.Set_int mines, " Number of mines to hide in the play field (20)");
   ]
 
 let () =
   Arg.parse speclist anon_fun usage_msg;
   Random.self_init ();
   let w0 = empty_field ~width:!width ~height:!height in
+  set_mines !mines;
   let rec preamble w =
     let r =
       try
